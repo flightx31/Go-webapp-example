@@ -1,6 +1,5 @@
 package main
 
-
 import (
 	"database/sql"
 	"embed"
@@ -21,7 +20,8 @@ var sqlFiles embed.FS
 //go:embed ui/*
 var staticFiles embed.FS
 var db *sql.DB
-const appName="helloworldapp"
+
+const appName = "helloworldapp"
 
 // init() is run by Golang the first time a program is run.
 func init() {
@@ -48,7 +48,7 @@ func startup() {
 		}
 	}
 
-	var dbFile = dbFilePath + afero.FilePathSeparator + appName+".db"
+	var dbFile = dbFilePath + afero.FilePathSeparator + appName + ".db"
 	db, err := sql.Open("sqlite3", dbFile)
 
 	if err != nil {
@@ -67,21 +67,20 @@ func server() {
 	log.Print("Configuring server")
 	myRouter := mux.NewRouter().StrictSlash(true)
 
-	loggingRouter :=  loggingMiddleware(myRouter)
+	loggingRouter := loggingMiddleware(myRouter)
 
 	myRouter.HandleFunc("/helloworld", helloWorldHandler).Methods(http.MethodGet)
 	myRouter.HandleFunc("/hellovars/{var1}/{var2}", helloVarsHandler).Methods(http.MethodGet)
 
 	// Note: the index, and static files handlers need to be after the routes because they are more generic routes.
 	myRouter.HandleFunc("/", homePageHandler)
-	fileServer:= http.FileServer(http.FS(staticFiles))
+	fileServer := http.FileServer(http.FS(staticFiles))
 	myRouter.PathPrefix("/").Handler(fileServer)
-
 
 	log.Print("Starting server")
 	srv := &http.Server{
-		Handler:     loggingRouter,
-		Addr:         "127.0.0.1:8081",
+		Handler: loggingRouter,
+		Addr:    "127.0.0.1:8081",
 		// Good practice: enforce timeouts for servers you create!
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
@@ -96,11 +95,11 @@ func server() {
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		setupCorsResponse(&w)
-		if len(r.URL.Path)>1{
+		if len(r.URL.Path) > 1 {
 			r.URL.Path = strings.TrimSuffix(r.URL.Path, "/")
 		}
 		// Do stuff here
-		log.Println("Incomming request to \""+r.RequestURI+"\"")
+		log.Println("Incomming request to \"" + r.RequestURI + "\"")
 		// Call the next handler, which can be another middleware in the chain, or the final handler.
 		next.ServeHTTP(w, r)
 	})
@@ -157,7 +156,7 @@ func initDatabase(db *sql.DB) {
 		dbVersion = getCurrentDBVersion(db)
 	}
 
-	log.Printf("Current database version: %d",dbVersion)
+	log.Printf("Current database version: %d", dbVersion)
 
 	// Note: the version of sqlite3 that this library is using does not support running scripts (multiple queries in one execute statement) The below only runs the first query:
 	//executeSingleStatement(db, "insert into version (version) values (0);insert into version (version) values (1);")
@@ -170,9 +169,9 @@ func initDatabase(db *sql.DB) {
 Note: The sql script can only contain sql statements (no comments) and each comment must end with a semicolon.
 */
 func executeScript(db *sql.DB, scriptText string, scriptName string) {
-	err:=executeSingleStatement(db, "BEGIN TRANSACTION;")
+	err := executeSingleStatement(db, "BEGIN TRANSACTION;")
 
-	if err!=nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 
@@ -185,9 +184,9 @@ func executeScript(db *sql.DB, scriptText string, scriptName string) {
 		command = strings.ReplaceAll(command, "\n", "")
 
 		if len(command) > 0 {
-			err:=executeSingleStatement(db, command)
+			err := executeSingleStatement(db, command)
 
-			if err!=nil{
+			if err != nil {
 				executeSingleStatement(db, "ROLLBACK;")
 				log.Fatal(err)
 			}
@@ -197,11 +196,11 @@ func executeScript(db *sql.DB, scriptText string, scriptName string) {
 	executeSingleStatement(db, "COMMIT;")
 }
 
-func executeSingleStatement(db *sql.DB, query string)error {
+func executeSingleStatement(db *sql.DB, query string) error {
 
 	statement, err := db.Prepare(query)
 
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
@@ -218,7 +217,7 @@ func getCurrentDBVersion(db *sql.DB) int64 {
 	rows, err := db.Query("select max(version) as version from version")
 
 	if err != nil {
-		if err.Error()=="no such table: version"{
+		if err.Error() == "no such table: version" {
 			return -1
 		}
 
