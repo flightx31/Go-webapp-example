@@ -130,7 +130,7 @@ func helloWorldHandler(w http.ResponseWriter, r *http.Request) {
 func helloVarsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Vars: %v %v\n", vars["var1"], vars["var2"])
+	fmt.Fprintf(w, "Path params: %v %v\n", vars["var1"], vars["var2"])
 }
 
 // *********************************************************
