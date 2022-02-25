@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"github.com/azer/logger"
 	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/op/go-logging"
 	"github.com/spf13/afero"
 	"net/http"
 	"os"
@@ -23,18 +23,10 @@ var db *sql.DB
 
 const appName = "helloworldapp"
 
-var log = logging.MustGetLogger("example")
-
-var format = logging.MustStringFormatter(
-	`%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`,
-)
+var log = logger.New("main")
 
 // init() is run by Golang the first time a program is run.
 func init() {
-	backend1 := logging.NewLogBackend(os.Stderr, "", 0)
-	backend1Formatter := logging.NewBackendFormatter(backend1, format)
-	backend1Leveled := logging.AddModuleLevel(backend1)
-	logging.SetBackend(backend1Leveled, backend1Formatter)
 	log.Info("Running init function")
 	startup()
 }
