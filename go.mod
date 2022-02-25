@@ -9,4 +9,9 @@ require (
 	github.com/spf13/afero v1.6.0
 )
 
-require golang.org/x/text v0.3.3 // indirect
+require (
+	github.com/azer/is-terminal v1.0.0 // indirect
+	github.com/azer/logger v1.0.0 // indirect
+	github.com/rs/zerolog v1.26.1 // indirect
+	golang.org/x/text v0.3.6 // indirect
+)

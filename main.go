@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/afero"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -25,14 +26,18 @@ const appName = "helloworldapp"
 
 // init() is run by Golang the first time a program is run.
 func init() {
-	log.Println("Running init function")
+	// UNIX Time is faster and smaller than most timestamps
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	// Default level for this example is info, unless debug flag is present
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	log.Info().Msg("Running init function")
 	startup()
 }
 
 func startup() {
 	dirname, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal(err)
+		log.Error().Err(err).Msg("")
 	}
 
 	var AppFs = afero.NewOsFs()
@@ -41,10 +46,10 @@ func startup() {
 	_, err = AppFs.Stat(dbFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Println("Creating directory: " + dbFilePath)
+			log.Info().Msg("Creating directory: " + dbFilePath)
 			AppFs.MkdirAll(dbFilePath, 0754)
 		} else {
-			log.Fatal(err)
+			log.Error().Err(err).Msg("")
 		}
 	}
 
@@ -52,7 +57,7 @@ func startup() {
 	db, err := sql.Open("sqlite3", dbFile)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error().Err(err).Msg("")
 	}
 
 	defer db.Close()
@@ -64,7 +69,7 @@ func main() {
 }
 
 func server() {
-	log.Print("Configuring server")
+	log.Info().Msg("Configuring server")
 	myRouter := mux.NewRouter().StrictSlash(true)
 
 	loggingRouter := loggingMiddleware(myRouter)
@@ -77,7 +82,7 @@ func server() {
 	fileServer := http.FileServer(http.FS(staticFiles))
 	myRouter.PathPrefix("/").Handler(fileServer)
 
-	log.Print("Starting server")
+	log.Info().Msg("Starting server")
 	srv := &http.Server{
 		Handler: loggingRouter,
 		Addr:    "127.0.0.1:8081",
@@ -85,7 +90,11 @@ func server() {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-	log.Fatal(srv.ListenAndServe())
+	err := srv.ListenAndServe()
+	if err != nil {
+		log.Error().Err(err).Msg("")
+	}
+
 }
 
 // *********************************************************
@@ -99,7 +108,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 			r.URL.Path = strings.TrimSuffix(r.URL.Path, "/")
 		}
 		// Do stuff here
-		log.Println("Incomming request to \"" + r.RequestURI + "\"")
+		log.Info().Msg("Incomming request to \"" + r.RequestURI + "\"")
 		// Call the next handler, which can be another middleware in the chain, or the final handler.
 		next.ServeHTTP(w, r)
 	})
@@ -137,16 +146,16 @@ func helloVarsHandler(w http.ResponseWriter, r *http.Request) {
 // *********************************************************
 
 func initDatabase(db *sql.DB) {
-	log.Println("==================================")
-	log.Print("Pinging database")
+	log.Info().Msg("==================================")
+	log.Info().Msg("Pinging database")
 	err := db.Ping()
 	if err != nil {
-		log.Fatal(err)
+		log.Error().Err(err).Msg("")
 	}
 	dbVersion := getCurrentDBVersion(db)
 
 	if dbVersion == -1 {
-		log.Println("No \"version\" table.")
+		log.Info().Msg("No \"version\" table.")
 		executeScript(db, getSqlFileText("sql/init.sql"), "Version table init script (version 0)")
 		dbVersion = getCurrentDBVersion(db)
 	}
@@ -156,13 +165,13 @@ func initDatabase(db *sql.DB) {
 		dbVersion = getCurrentDBVersion(db)
 	}
 
-	log.Printf("Current database version: %d", dbVersion)
+	log.Info().Msg("Current database version: " + string(dbVersion))
 
 	// Note: the version of sqlite3 that this library is using does not support running scripts (multiple queries in one execute statement) The below only runs the first query:
 	//executeSingleStatement(db, "insert into version (version) values (0);insert into version (version) values (1);")
 
-	log.Println("==================================")
-	log.Println()
+	log.Info().Msg("==================================")
+	log.Info().Msg("")
 }
 
 /**
@@ -172,10 +181,10 @@ func executeScript(db *sql.DB, scriptText string, scriptName string) {
 	err := executeSingleStatement(db, "BEGIN TRANSACTION;")
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error().Err(err)
 	}
 
-	log.Println("Executing script: " + scriptName)
+	log.Info().Msg("Executing script: " + scriptName)
 	commands := strings.Split(scriptText, ";")
 
 	for c := 0; c < len(commands); c++ {
@@ -188,7 +197,7 @@ func executeScript(db *sql.DB, scriptText string, scriptName string) {
 
 			if err != nil {
 				executeSingleStatement(db, "ROLLBACK;")
-				log.Fatal(err)
+				log.Error().Err(err).Msg("")
 			}
 		}
 	}
@@ -221,7 +230,7 @@ func getCurrentDBVersion(db *sql.DB) int64 {
 			return -1
 		}
 
-		log.Fatal(err)
+		log.Error().Err(err).Msg("")
 	}
 
 	version := Version{Version: -1}
@@ -231,7 +240,7 @@ func getCurrentDBVersion(db *sql.DB) int64 {
 
 	if err != nil {
 		rows.Close()
-		log.Fatal(err)
+		log.Error().Err(err).Msg("")
 	}
 
 	rows.Close()
@@ -241,7 +250,7 @@ func getCurrentDBVersion(db *sql.DB) int64 {
 func getSqlFileText(path string) string {
 	data, err := sqlFiles.ReadFile(path)
 	if err != nil {
-		log.Fatal(err)
+		log.Error().Err(err).Msg("")
 	}
 
 	return string(data)
@@ -250,7 +259,7 @@ func getSqlFileText(path string) string {
 func getStaticFileText(path string) string {
 	data, err := staticFiles.ReadFile(path)
 	if err != nil {
-		log.Fatal(err)
+		log.Error().Err(err).Msg("")
 	}
 
 	return string(data)
